@@ -855,6 +855,189 @@ export const MorphSVGPlugin = {
 	defaultMap: "size"
 };
 
+export async function loadMorphPath(pathId, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-paths/${pathId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-error").innerText = data.message;
+			return null;
+		}
+		return data.path;
+	} catch (e) {
+		document.getElementById("morph-error").innerText = `Exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function saveMorphPath(projectId, pathData, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/morph-paths`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(pathData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-status").innerText = data.error;
+			return null;
+		}
+		return data.id;
+	} catch (e) {
+		document.getElementById("morph-status").innerText = `Stack: ${e.stack}`;
+		return null;
+	}
+}
+
+export async function deleteMorphPath(pathId, accessToken) {
+	const res = await fetch(`/api/morph-paths/${pathId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.querySelector(".morph-toast").innerText = err.error_message || err.message;
+		return false;
+	}
+	return true;
+}
+
+export async function listMorphPaths(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/morph-paths`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-list-error").textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.paths;
+	} catch (e) {
+		document.getElementById("morph-list-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function duplicateMorphPath(pathId, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-paths/${pathId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			alert(`Duplication failed: ${data.description}`);
+			return null;
+		}
+		return data.newPathId;
+	} catch (e) {
+		alert(`Client error: ${e.message}`);
+		return null;
+	}
+}
+
+export async function fetchMorphPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-preset-error").textContent = data.developer_message;
+			return [];
+		}
+		return data.presets;
+	} catch (e) {
+		document.getElementById("morph-preset-error").textContent = `Network: ${e.message}`;
+		return [];
+	}
+}
+
+export async function applyMorphTemplate(templateId, svgEl, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-templates/${templateId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-alert").innerHTML = `<b>${data.response_error}</b>`;
+			return;
+		}
+		MorphSVGPlugin.to(svgEl, { morphSVG: data.path });
+	} catch (e) {
+		document.getElementById("morph-alert").innerHTML = `<pre>${e.stack}</pre>`;
+	}
+}
+
+export async function syncMorphState(sessionId, stateData, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-sessions/${sessionId}/sync`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(stateData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-sync-status").innerText = data.exception_text || data.message;
+			return null;
+		}
+		return data.state;
+	} catch (e) {
+		document.getElementById("morph-sync-status").innerText = `Unexpected: ${e.message}`;
+		return null;
+	}
+}
+
+export async function exportMorphConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/morph-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			document.getElementById("morph-export-error").innerText = `Export failed: ${err.file_path} - ${err.message}`;
+			return null;
+		}
+		return res.blob();
+	} catch (e) {
+		document.getElementById("morph-export-error").innerText = `${e.message}\n${e.stack}`;
+		return null;
+	}
+}
+
+export async function importMorphConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/morph-config/import`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${accessToken}` },
+			body: form
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-import-note").innerText = `DB Error: ${data.sql_state} - ${data.query} - ${data.message}`;
+			return null;
+		}
+		return data;
+	} catch (e) {
+		document.getElementById("morph-import-note").innerText = `Import exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function fetchMorphHistory(pathId, accessToken) {
+	try {
+		const res = await fetch(`/api/morph-paths/${pathId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("morph-history-error").textContent = data.framework_error || data.message;
+			return [];
+		}
+		return data.history;
+	} catch (e) {
+		document.getElementById("morph-history-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function archiveMorphPath(pathId, accessToken) {
+	const res = await fetch(`/api/morph-paths/${pathId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.getElementById("morph-archive-status").innerText = `Archive failed on ${err.host}: ${err.message}`;
+		return false;
+	}
+	return true;
+}
+
 _getGSAP() && gsap.registerPlugin(MorphSVGPlugin);
 
 export { MorphSVGPlugin as default };

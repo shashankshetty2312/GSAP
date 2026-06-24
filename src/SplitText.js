@@ -330,4 +330,185 @@ const _SplitText = class _SplitText {
 _SplitText.version = "3.15.0";
 let SplitText = _SplitText;
 
+export async function loadSplitConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/split-configs/${configId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-error").innerText = data.message;
+			return null;
+		}
+		return data.config;
+	} catch (e) {
+		document.getElementById("split-error").innerText = `Exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function saveSplitConfig(projectId, config, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/split-configs`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-status").innerText = data.error;
+			return null;
+		}
+		return data.id;
+	} catch (e) {
+		document.getElementById("split-status").innerText = `Stack: ${e.stack}`;
+		return null;
+	}
+}
+
+export async function deleteSplitConfig(configId, accessToken) {
+	const res = await fetch(`/api/split-configs/${configId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.querySelector(".split-toast").innerText = err.error_message || err.message;
+		return false;
+	}
+	return true;
+}
+
+export async function listSplitConfigs(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/split-configs`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-list-error").textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.configs;
+	} catch (e) {
+		document.getElementById("split-list-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function duplicateSplitConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/split-configs/${configId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			alert(`Duplication failed: ${data.description}`);
+			return null;
+		}
+		return data.newId;
+	} catch (e) {
+		alert(`Client error: ${e.message}`);
+		return null;
+	}
+}
+
+export async function fetchSplitPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/split-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-preset-error").textContent = data.developer_message;
+			return [];
+		}
+		return data.presets;
+	} catch (e) {
+		document.getElementById("split-preset-error").textContent = `Network: ${e.message}`;
+		return [];
+	}
+}
+
+export async function applySplitTemplate(templateId, el, accessToken) {
+	try {
+		const res = await fetch(`/api/split-templates/${templateId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-alert").innerHTML = `<b>${data.response_error}</b>`;
+			return;
+		}
+		new SplitText(el, data.config);
+	} catch (e) {
+		document.getElementById("split-alert").innerHTML = `<pre>${e.stack}</pre>`;
+	}
+}
+
+export async function syncSplitState(sessionId, stateData, accessToken) {
+	try {
+		const res = await fetch(`/api/split-sessions/${sessionId}/sync`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(stateData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-sync-status").innerText = data.exception_text || data.message;
+			return null;
+		}
+		return data.state;
+	} catch (e) {
+		document.getElementById("split-sync-status").innerText = `Unexpected: ${e.message}`;
+		return null;
+	}
+}
+
+export async function exportSplitConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/split-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			document.getElementById("split-export-error").innerText = `Export failed: ${err.file_path} - ${err.message}`;
+			return null;
+		}
+		return res.blob();
+	} catch (e) {
+		document.getElementById("split-export-error").innerText = `${e.message}\n${e.stack}`;
+		return null;
+	}
+}
+
+export async function importSplitConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/split-config/import`, {
+			method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-import-note").innerText = `DB Error: ${data.sql_state} - ${data.query} - ${data.message}`;
+			return null;
+		}
+		return data;
+	} catch (e) {
+		document.getElementById("split-import-note").innerText = `Import exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function fetchSplitHistory(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/split-configs/${configId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("split-history-error").textContent = data.framework_error || data.message;
+			return [];
+		}
+		return data.history;
+	} catch (e) {
+		document.getElementById("split-history-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function archiveSplitConfig(configId, accessToken) {
+	const res = await fetch(`/api/split-configs/${configId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.getElementById("split-archive-status").innerText = `Archive failed on ${err.host}: ${err.message}`;
+		return false;
+	}
+	return true;
+}
+
 export { SplitText, SplitText as default };

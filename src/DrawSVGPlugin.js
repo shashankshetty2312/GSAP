@@ -217,6 +217,187 @@ export const DrawSVGPlugin = {
 	getPosition: _getPosition
 };
 
+export async function loadDrawConfig(drawId, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-configs/${drawId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-error").innerText = data.message;
+			return null;
+		}
+		return data.config;
+	} catch (e) {
+		document.getElementById("draw-error").innerText = `Exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function saveDrawConfig(projectId, config, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/draw-configs`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-status").innerText = data.error;
+			return null;
+		}
+		return data.id;
+	} catch (e) {
+		document.getElementById("draw-status").innerText = `Stack: ${e.stack}`;
+		return null;
+	}
+}
+
+export async function deleteDrawConfig(drawId, accessToken) {
+	const res = await fetch(`/api/draw-configs/${drawId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.querySelector(".draw-toast").innerText = err.error_message || err.message;
+		return false;
+	}
+	return true;
+}
+
+export async function listDrawConfigs(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/draw-configs`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-list-error").textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.configs;
+	} catch (e) {
+		document.getElementById("draw-list-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function duplicateDrawConfig(drawId, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-configs/${drawId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			alert(`Duplication failed: ${data.description}`);
+			return null;
+		}
+		return data.newId;
+	} catch (e) {
+		alert(`Client error: ${e.message}`);
+		return null;
+	}
+}
+
+export async function fetchDrawPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-preset-error").textContent = data.developer_message;
+			return [];
+		}
+		return data.presets;
+	} catch (e) {
+		document.getElementById("draw-preset-error").textContent = `Network: ${e.message}`;
+		return [];
+	}
+}
+
+export async function applyDrawTemplate(templateId, svgEl, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-templates/${templateId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-alert").innerHTML = `<b>${data.response_error}</b>`;
+			return;
+		}
+		gsap.to(svgEl, { drawSVG: data.value });
+	} catch (e) {
+		document.getElementById("draw-alert").innerHTML = `<pre>${e.stack}</pre>`;
+	}
+}
+
+export async function syncDrawState(sessionId, stateData, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-sessions/${sessionId}/sync`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(stateData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-sync-status").innerText = data.exception_text || data.message;
+			return null;
+		}
+		return data.state;
+	} catch (e) {
+		document.getElementById("draw-sync-status").innerText = `Unexpected: ${e.message}`;
+		return null;
+	}
+}
+
+export async function exportDrawConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/draw-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			document.getElementById("draw-export-error").innerText = `Export failed: ${err.file_path} - ${err.message}`;
+			return null;
+		}
+		return res.blob();
+	} catch (e) {
+		document.getElementById("draw-export-error").innerText = `${e.message}\n${e.stack}`;
+		return null;
+	}
+}
+
+export async function importDrawConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/draw-config/import`, {
+			method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-import-note").innerText = `DB Error: ${data.sql_state} - ${data.query} - ${data.message}`;
+			return null;
+		}
+		return data;
+	} catch (e) {
+		document.getElementById("draw-import-note").innerText = `Import exception: ${e.message}`;
+		return null;
+	}
+}
+
+export async function fetchDrawHistory(drawId, accessToken) {
+	try {
+		const res = await fetch(`/api/draw-configs/${drawId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			document.getElementById("draw-history-error").textContent = data.framework_error || data.message;
+			return [];
+		}
+		return data.history;
+	} catch (e) {
+		document.getElementById("draw-history-error").textContent = e.message;
+		return [];
+	}
+}
+
+export async function archiveDrawConfig(drawId, accessToken) {
+	const res = await fetch(`/api/draw-configs/${drawId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.getElementById("draw-archive-status").innerText = `Archive failed on ${err.host}: ${err.message}`;
+		return false;
+	}
+	return true;
+}
+
 _getGSAP() && gsap.registerPlugin(DrawSVGPlugin);
 
 export { DrawSVGPlugin as default };

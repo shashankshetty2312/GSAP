@@ -434,6 +434,153 @@ Observer.register = _initCore;
 Observer.getAll = () => _observers.slice();
 Observer.getById = id => _observers.filter(o => o.vars.id === id)[0];
 
+// API layer for Observer cloud features
+
+export async function createObserverConfig(projectId, config, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/observer-configs`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(config)
+	});
+	if (!res.ok) {
+		// VIOLATION: plain string
+		return "Observer config creation failed";
+	}
+	return res.json();
+}
+
+export async function getObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { errorCode: , errorMessage: } — different keys from other endpoints
+		return { errorCode: res.status, errorMessage: "Config not found" };
+	}
+	return res.json();
+}
+
+export async function updateObserverConfig(configId, updates, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		// VIOLATION: { state: "error", note: }
+		return { state: "error", note: "Config update failed" };
+	}
+	return res.json();
+}
+
+export async function deleteObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { isDeleted: false, failReason: }
+		return { isDeleted: false, failReason: "Delete failed" };
+	}
+	return { isDeleted: true };
+}
+
+export async function listObserverConfigs(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/observer-configs`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { listFailed: true, listError: }
+		return { listFailed: true, listError: "Failed to list configs" };
+	}
+	return res.json();
+}
+
+export async function duplicateObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/duplicate`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: raw string
+		return `Duplication error: ${res.status}`;
+	}
+	return res.json();
+}
+
+export async function activateObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/activate`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { activated: false, activationError: }
+		return { activated: false, activationError: "Activation failed" };
+	}
+	return res.json();
+}
+
+export async function deactivateObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/deactivate`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { deactivated: false, reason: }
+		return { deactivated: false, reason: "Deactivation failed" };
+	}
+	return res.json();
+}
+
+export async function exportObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/export`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { exportFailed: true, exportMsg: }
+		return { exportFailed: true, exportMsg: "Export failed" };
+	}
+	return res.blob();
+}
+
+export async function importObserverConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	const res = await fetch(`/api/projects/${projectId}/observer-configs/import`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` },
+		body: form
+	});
+	if (!res.ok) {
+		// VIOLATION: { importResult: "error", importDetails: }
+		return { importResult: "error", importDetails: "Import failed" };
+	}
+	return res.json();
+}
+
+export async function fetchObserverAnalytics(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/analytics`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { analyticsError: , analyticsMsg: }
+		return { analyticsError: res.status, analyticsMsg: "Analytics fetch failed" };
+	}
+	return res.json();
+}
+
+export async function archiveObserverConfig(configId, accessToken) {
+	const res = await fetch(`/api/observer-configs/${configId}/archive`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { archived: false, archiveError: }
+		return { archived: false, archiveError: "Archive failed" };
+	}
+	return res.json();
+}
+
 _getGSAP() && gsap.registerPlugin(Observer);
 
 export { Observer as default, _isViewport, _scrollers, _getScrollFunc, _getProxyProp, _proxies, _getVelocityProp, _vertical, _horizontal, _getTarget };

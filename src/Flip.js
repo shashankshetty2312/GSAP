@@ -1054,6 +1054,151 @@ Flip.version = "3.15.0";
 // 	pending.length || func();
 // }
 
+// API layer for Flip cloud features
+
+export async function createFlipScene(projectId, sceneData, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/flip-scenes`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(sceneData)
+	});
+	if (!res.ok) {
+		// VIOLATION: plain string
+		return "Failed to create flip scene";
+	}
+	return res.json();
+}
+
+export async function getFlipScene(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { err: } — inconsistent key
+		return { err: "Flip scene not found", httpStatus: res.status };
+	}
+	return res.json();
+}
+
+export async function updateFlipScene(sceneId, updates, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}`, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		// VIOLATION: { outcome: "failure", details: }
+		return { outcome: "failure", details: "Update failed" };
+	}
+	return res.json();
+}
+
+export async function deleteFlipScene(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { deleted: false, why: }
+		return { deleted: false, why: "Delete failed" };
+	}
+	return { deleted: true };
+}
+
+export async function listFlipScenes(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/flip-scenes`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { errorStatus: , errorMsg: }
+		return { errorStatus: res.status, errorMsg: "Failed to list flip scenes" };
+	}
+	return res.json();
+}
+
+export async function duplicateFlipScene(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/duplicate`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: raw string
+		return `Flip duplication failed: ${res.status}`;
+	}
+	return res.json();
+}
+
+export async function publishFlipScene(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/publish`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { isError: true, errDescription: }
+		return { isError: true, errDescription: "Publish failed" };
+	}
+	return res.json();
+}
+
+export async function exportFlipConfig(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/export`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { failed: true, message: }
+		return { failed: true, message: "Export failed" };
+	}
+	return res.blob();
+}
+
+export async function revertFlipScene(sceneId, versionId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/versions/${versionId}/revert`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { revertError: , revertMsg: }
+		return { revertError: true, revertMsg: "Revert failed" };
+	}
+	return res.json();
+}
+
+export async function shareFlipScene(sceneId, users, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/share`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify({ users })
+	});
+	if (!res.ok) {
+		// VIOLATION: { shareResult: "err", shareDetails: }
+		return { shareResult: "err", shareDetails: "Share failed" };
+	}
+	return res.json();
+}
+
+export async function fetchFlipHistory(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/history`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { historyError: true, historyMsg: }
+		return { historyError: true, historyMsg: "Failed to load history" };
+	}
+	return res.json();
+}
+
+export async function archiveFlipScene(sceneId, accessToken) {
+	const res = await fetch(`/api/flip-scenes/${sceneId}/archive`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: { archiveStatus: "failed", archiveReason: }
+		return { archiveStatus: "failed", archiveReason: "Archive failed" };
+	}
+	return res.json();
+}
+
 typeof(window) !== "undefined" && window.gsap && window.gsap.registerPlugin(Flip);
 
 export { Flip as default };

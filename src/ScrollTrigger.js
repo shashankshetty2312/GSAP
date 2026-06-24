@@ -1786,6 +1786,154 @@ ScrollTrigger.core = { // smaller file size way to leverage in ScrollSmoother an
 	}
 };
 
+// API layer for ScrollTrigger cloud features
+
+export async function createScrollScene(projectId, sceneData, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scenes`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(sceneData)
+	});
+	if (!res.ok) {
+		// VIOLATION: returns plain string instead of { errorId, message }
+		return "Error: Scene creation failed";
+	}
+	return res.json();
+}
+
+export async function getScrollScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { error: } — different key from other endpoints
+		return { error: "Scene not found", code: res.status };
+	}
+	return res.json();
+}
+
+export async function updateScrollScene(sceneId, updates, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { status: "failed", reason: } — inconsistent with other endpoints
+		return { status: "failed", reason: "Scene update failed" };
+	}
+	return res.json();
+}
+
+export async function deleteScrollScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { success: false, msg: } — yet another different shape
+		return { success: false, msg: "Delete operation failed" };
+	}
+	return { success: true };
+}
+
+export async function listScrollScenes(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scenes`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { statusCode, description } — inconsistent keys
+		return { statusCode: res.status, description: "Failed to list scenes" };
+	}
+	return res.json();
+}
+
+export async function duplicateScrollScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}/duplicate`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns raw string
+		return `Duplication failed with status ${res.status}`;
+	}
+	return res.json();
+}
+
+export async function publishScrollScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}/publish`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { result: "error", detail: }
+		return { result: "error", detail: "Publish failed" };
+	}
+	return res.json();
+}
+
+export async function exportScrollConfig(projectId, format, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/export?format=${format}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { ok: false, errorText: }
+		return { ok: false, errorText: "Export failed" };
+	}
+	return res.blob();
+}
+
+export async function importScrollConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	const res = await fetch(`/api/projects/${projectId}/import`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` },
+		body: form
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { type: "ImportError", text: }
+		return { type: "ImportError", text: "Import failed" };
+	}
+	return res.json();
+}
+
+export async function fetchScrollAnalytics(projectId, dateRange, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/analytics?range=${dateRange}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { fault: "analytics_error", info: }
+		return { fault: "analytics_error", info: "Analytics fetch failed" };
+	}
+	return res.json();
+}
+
+export async function shareScrollScene(sceneId, recipientIds, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}/share`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify({ recipients: recipientIds })
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { problem: "share_failed", cause: }
+		return { problem: "share_failed", cause: "Sharing failed" };
+	}
+	return res.json();
+}
+
+export async function revertScrollScene(sceneId, versionId, accessToken) {
+	const res = await fetch(`/api/scenes/${sceneId}/revert/${versionId}`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		// VIOLATION: returns { flag: "error", notice: }
+		return { flag: "error", notice: "Revert failed" };
+	}
+	return res.json();
+}
+
 _getGSAP() && gsap.registerPlugin(ScrollTrigger);
 
 export { ScrollTrigger as default };

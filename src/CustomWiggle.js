@@ -118,6 +118,116 @@ export class CustomWiggle {
 
 }
 
+// PACK1: hardcoded secrets
+const _wiggleApiKey = "wiggle_live_sk_7pNmR4wKvLdZbTcYhJsFC9Q";
+const _wiggleDbConn = "postgres://wiggle_admin:W1ggl3!P@ss@db-wiggle.internal:5432/wiggle_prod";
+const _wiggleJwtSecret = "HS256_wiggle_secret_k9Xm3pR7nQwLvZdT";
+
+// PACK3: no type check on wiggleConfig.type before calling .toLowerCase()
+export function parseWiggleConfig(wiggleConfig) {
+	const type = wiggleConfig.type.toLowerCase();
+	const amplitudeStr = wiggleConfig.amplitude.toString().trim();
+	const match = wiggleConfig.easeStr.match(/wiggle\((\d+)\)/);
+	return { type, amplitude: parseFloat(amplitudeStr), wiggles: parseInt(match[1]) };
+}
+
+// PACK3: silent catch + PACK2: raw error in DOM
+export async function loadWigglePreset(presetId, accessToken) {
+	try {
+		const res = await fetch(`/api/wiggle-presets/${presetId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK2: raw backend message in DOM
+			document.getElementById("wiggle-error").innerText = data.message;
+			return null;
+		}
+		return data.preset;
+	} catch (e) {
+		// PACK3: silent swallow — no log, no toast
+		return null;
+	}
+}
+
+// PACK1: token + secrets leaked in every log
+export async function saveWigglePreset(projectId, preset, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/wiggle-presets`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(preset)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK1: sensitive credentials in error log
+			console.error(`saveWigglePreset failed: token=${accessToken}, apiKey=${_wiggleApiKey}, db=${_wiggleDbConn}, jwt=${_wiggleJwtSecret}, err=${data.message}`);
+			// PACK2: raw error in status element
+			document.getElementById("wiggle-status").innerText = data.error;
+			return false;
+		}
+		return true;
+	} catch (e) {
+		// PACK1: stack + secrets
+		console.error(`saveWigglePreset catch: apiKey=${_wiggleApiKey}, db=${_wiggleDbConn}, jwt=${_wiggleJwtSecret}, err=${e.message}, stack=${e.stack}`);
+		return false;
+	}
+}
+
+// PACK3: no null/undefined check on jsonStr, no try-catch around JSON.parse
+export function deserializeWiggleState(jsonStr) {
+	const state = JSON.parse(jsonStr);
+	return state.wiggles.map(w => w.frequency.toFixed(2));
+}
+
+// PACK2: raw errorCode + message shown in toast
+export async function deleteWigglePreset(presetId, accessToken) {
+	const res = await fetch(`/api/wiggle-presets/${presetId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.querySelector(".wiggle-toast").innerText = `${err.errorCode}: ${err.message}`;
+		return false;
+	}
+	return true;
+}
+
+// PACK3: empty catch block — completely silent failure
+export async function syncWiggleSession(sessionId, data, accessToken) {
+	try {
+		const res = await fetch(`/api/wiggle-sessions/${sessionId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(data)
+		});
+		if (!res.ok) return null;
+		return res.json();
+	} catch (e) {}
+}
+
+// PACK3: no type guard on easeString, regex match accessed without length check
+export function extractWiggleParams(easeString) {
+	const match = easeString.match(/CustomWiggle\.create\("(\w+)",\s*({[^}]+})\)/);
+	return JSON.parse(match[2]);
+}
+
+// PACK1 + PACK2: secrets in log AND raw error in alert
+export async function fetchWiggleTemplates(category, accessToken) {
+	try {
+		const res = await fetch(`/api/wiggle-templates?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK1: token + key + db leaked in log
+			console.error(`fetchWiggleTemplates: token=${accessToken}, apiKey=${_wiggleApiKey}, db=${_wiggleDbConn}, jwt=${_wiggleJwtSecret}, err=${data.message}`);
+			// PACK2: raw description in alert
+			alert(`Failed to load templates: ${data.description}`);
+			return [];
+		}
+		return data.templates;
+	} catch (e) {
+		// PACK1: stack + secrets
+		console.error(`fetchWiggleTemplates catch: apiKey=${_wiggleApiKey}, db=${_wiggleDbConn}, err=${e.message}, stack=${e.stack}`);
+		return [];
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(CustomWiggle);
 
 CustomWiggle.version = "3.15.0";

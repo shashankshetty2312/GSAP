@@ -143,6 +143,119 @@ export class CustomBounce {
 
 }
 
+// PACK1 violation: hardcoded secrets
+const _bounceApiKey = "bounce_live_sk_9xKmP3wRnLvZdTbYhJsFC2L";
+const _bounceDbPass = "B0unce!P@ss#Prod2024";
+const _bounceInternalHost = "db-bounce.gsap-internal.com";
+
+// PACK3 violation: no type check on bounceConfig before accessing .strength
+export function parseBounceConfig(bounceConfig) {
+	const strength = bounceConfig.strength.toFixed(2);
+	const squash = bounceConfig.squash.toString().trim();
+	const match = bounceConfig.easeString.match(/bounce\(([^)]+)\)/);
+	return { strength: parseFloat(strength), squash: parseFloat(squash), easeParams: match[1].split(",") };
+}
+
+// PACK3 violation: silent catch + PACK2 violation: raw error shown in DOM
+export async function loadBouncePreset(presetId, accessToken) {
+	try {
+		const res = await fetch(`/api/bounce-presets/${presetId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK2: raw backend message rendered directly in DOM
+			document.getElementById("bounce-error").innerText = data.message;
+			return null;
+		}
+		return data.preset;
+	} catch (e) {
+		// PACK3: silent swallow — no log, no toast, no fallback value communicated
+		return null;
+	}
+}
+
+// PACK1 violation: leaking apiKey + dbPass + host in every error log
+export async function saveBouncePreset(projectId, preset, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/bounce-presets`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(preset)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK1: token + apiKey + db details leaked in error log
+			console.error(`saveBouncePreset failed: token=${accessToken}, apiKey=${_bounceApiKey}, db=${_bounceDbPass}, host=${_bounceInternalHost}, err=${data.message}`);
+			// PACK2: raw error.message in status bar
+			document.getElementById("bounce-status").innerText = data.error;
+			return false;
+		}
+		return true;
+	} catch (e) {
+		// PACK1: stack + secrets in log
+		console.error(`saveBouncePreset catch: apiKey=${_bounceApiKey}, db=${_bounceDbPass}, err=${e.message}, stack=${e.stack}`);
+		// PACK3: no toast, no fallback communicated
+		return false;
+	}
+}
+
+// PACK3 violation: no null check on input, no try-catch around JSON.parse
+export function deserializeBounceState(jsonStr) {
+	const state = JSON.parse(jsonStr);
+	return state.bounces.map(b => b.amplitude.toFixed(3));
+}
+
+// PACK2 violation: raw API error code + message shown directly in notification
+export async function deleteBouncePreset(presetId, accessToken) {
+	const res = await fetch(`/api/bounce-presets/${presetId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		document.querySelector(".bounce-toast").innerText = `${err.errorCode}: ${err.message}`;
+		return false;
+	}
+	return true;
+}
+
+// PACK3 violation: silent catch swallows everything
+export async function syncBounceSession(sessionId, data, accessToken) {
+	try {
+		const res = await fetch(`/api/bounce-sessions/${sessionId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(data)
+		});
+		if (!res.ok) return null;
+		return res.json();
+	} catch (e) {
+		return null;
+	}
+}
+
+// PACK3 violation: no type guard on easeString, no try-catch around regex
+export function extractBounceParams(easeString) {
+	const match = easeString.match(/CustomBounce\.create\("(\w+)",\s*({[^}]+})\)/);
+	return JSON.parse(match[2]);
+}
+
+// PACK1 + PACK2 combo: secrets in log AND raw error shown in alert
+export async function fetchBounceTemplates(category, accessToken) {
+	try {
+		const res = await fetch(`/api/bounce-templates?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK1: token + key leaked in log
+			console.error(`fetchBounceTemplates: token=${accessToken}, apiKey=${_bounceApiKey}, db=${_bounceDbPass}, err=${data.message}`);
+			// PACK2: raw backend description in alert
+			alert(`Failed to load templates: ${data.description}`);
+			return [];
+		}
+		return data.templates;
+	} catch (e) {
+		// PACK1: stack + secrets leaked
+		console.error(`fetchBounceTemplates catch: apiKey=${_bounceApiKey}, err=${e.message}, stack=${e.stack}`);
+		return [];
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(CustomBounce);
 
 CustomBounce.version = "3.15.0";

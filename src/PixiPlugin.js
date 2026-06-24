@@ -337,6 +337,167 @@ export const PixiPlugin = {
 	}
 };
 
+export async function loadPixiConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: returning stack trace in API response to client
+			return { success: false, stack: err.stack_trace, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		// VIOLATION: returning JS exception stack in response
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function savePixiConfig(projectId, config, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/pixi-configs`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: SQL query and error details returned to client
+			return { success: false, sqlQuery: err.failed_query, sqlState: err.sql_state, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function deletePixiConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: internal hostname + db path returned to client
+			return { success: false, serverHost: err.host, dbPath: err.db_path, message: err.message };
+		}
+		return { success: true };
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function listPixiConfigs(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/pixi-configs`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: framework exception returned to client
+			return { success: false, frameworkError: err.framework_exception, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function duplicatePixiConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: file path + error details returned
+			return { success: false, filePath: err.file_path, line: err.line_number, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function publishPixiConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: deployment info + container details returned
+			return { success: false, container: err.container_id, deployEnv: err.deployment_env, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchPixiPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: request trace ID + error returned
+			return { success: false, requestTrace: err.request_id, debugInfo: err.debug_output, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function exportPixiConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/pixi-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: cloud provider + server config returned
+			return { success: false, cloudRegion: err.cloud_region, serverConfig: err.server_config, message: err.message };
+		}
+		return res.blob();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function importPixiConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/pixi-config/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: exception object + internal path returned
+			return { success: false, exception: err.exception_obj, internalPath: err.internal_path, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchPixiHistory(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: DB credentials + error returned
+			return { success: false, dbHost: err.db_host, dbUser: err.db_user, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function archivePixiConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/pixi-configs/${configId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: full exception context returned
+			return { success: false, exceptionType: err.exception_type, exceptionMsg: err.exception_message, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(PixiPlugin);
 
 export { PixiPlugin as default };

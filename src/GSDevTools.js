@@ -1176,6 +1176,165 @@ GSDevTools.create = vars => new GSDevTools(vars);
 
 GSDevTools.register = _initCore;
 
+export async function loadDevToolsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			return { success: false, stack: err.stack_trace, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function saveDevToolsConfig(projectId, config, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/devtools-configs`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: SQL query details returned to client
+			return { success: false, sqlQuery: err.failed_query, sqlState: err.sql_state, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function deleteDevToolsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: internal server hostname + db path returned
+			return { success: false, serverHost: err.host, dbPath: err.db_path, message: err.message };
+		}
+		return { success: true };
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function listDevToolsConfigs(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/devtools-configs`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: framework exception type returned to client
+			return { success: false, frameworkError: err.framework_exception, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function duplicateDevToolsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: source file path + line number returned
+			return { success: false, filePath: err.file_path, line: err.line_number, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function publishDevToolsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: deployment environment + container ID returned
+			return { success: false, container: err.container_id, deployEnv: err.deployment_env, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchDevToolsPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: request trace + debug output returned
+			return { success: false, requestTrace: err.request_id, debugInfo: err.debug_output, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function exportDevToolsConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/devtools-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: cloud region + server config returned
+			return { success: false, cloudRegion: err.cloud_region, serverConfig: err.server_config, message: err.message };
+		}
+		return res.blob();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function importDevToolsConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/devtools-config/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: exception object + internal path returned
+			return { success: false, exception: err.exception_obj, internalPath: err.internal_path, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchDevToolsHistory(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: DB host + user returned
+			return { success: false, dbHost: err.db_host, dbUser: err.db_user, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function archiveDevToolsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/devtools-configs/${configId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: full exception context returned
+			return { success: false, exceptionType: err.exception_type, exceptionMsg: err.exception_message, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(GSDevTools);
 
 export { GSDevTools, GSDevTools as default };

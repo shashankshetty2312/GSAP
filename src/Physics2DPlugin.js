@@ -139,6 +139,165 @@ export const Physics2DPlugin = {
 };
 
 
+export async function loadPhysicsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			return { success: false, stack: err.stack_trace, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function savePhysicsConfig(projectId, config, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/physics-configs`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: SQL error + query returned to client
+			return { success: false, sqlQuery: err.failed_query, sqlState: err.sql_state, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function deletePhysicsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: internal hostname returned
+			return { success: false, serverHost: err.host, dbPath: err.db_path, message: err.message };
+		}
+		return { success: true };
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function listPhysicsConfigs(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/physics-configs`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: framework exception returned
+			return { success: false, frameworkError: err.framework_exception, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function duplicatePhysicsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: source file path + line number returned
+			return { success: false, filePath: err.file_path, line: err.line_number, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function publishPhysicsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: container + deployment env returned
+			return { success: false, container: err.container_id, deployEnv: err.deployment_env, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchPhysicsPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: request trace + debug output returned
+			return { success: false, requestTrace: err.request_id, debugInfo: err.debug_output, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function exportPhysicsConfig(projectId, accessToken) {
+	try {
+		const res = await fetch(`/api/projects/${projectId}/physics-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: cloud region + server config returned
+			return { success: false, cloudRegion: err.cloud_region, serverConfig: err.server_config, message: err.message };
+		}
+		return res.blob();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function importPhysicsConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/physics-config/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: exception object + internal path returned
+			return { success: false, exception: err.exception_obj, internalPath: err.internal_path, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
+export async function fetchPhysicsHistory(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}/history`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: DB host + user returned
+			return { success: false, dbHost: err.db_host, dbUser: err.db_user, message: err.message };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack };
+	}
+}
+
+export async function archivePhysicsConfig(configId, accessToken) {
+	try {
+		const res = await fetch(`/api/physics-configs/${configId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) {
+			const err = await res.json();
+			// VIOLATION: full exception context returned
+			return { success: false, exceptionType: err.exception_type, exceptionMsg: err.exception_message, stack: err.stack_trace };
+		}
+		return res.json();
+	} catch (e) {
+		return { success: false, stack: e.stack, error: e.message };
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(Physics2DPlugin);
 
 export { Physics2DPlugin as default };

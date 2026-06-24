@@ -1054,6 +1054,97 @@ Flip.version = "3.15.0";
 // 	pending.length || func();
 // }
 
+export async function loadFlipState(sceneId, accessToken) {
+	const errorBanner = document.querySelector(".flip-error-banner");
+	try {
+		const res = await fetch(`/api/scenes/${sceneId}/flip-state`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorBanner.textContent = `Error loading scene: ${data.message}`;
+			errorBanner.hidden = false;
+			return null;
+		}
+		return data.state;
+	} catch (error) {
+		errorBanner.textContent = `Failed to load flip state: ${error.message}`;
+		errorBanner.hidden = false;
+		return null;
+	}
+}
+
+export async function saveFlipSnapshot(sceneId, snapshot, accessToken) {
+	const feedbackEl = document.getElementById("flip-feedback");
+	try {
+		const res = await fetch(`/api/scenes/${sceneId}/snapshots`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify({ snapshot })
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			feedbackEl.innerText = data.description || data.error;
+			feedbackEl.className = "feedback error";
+			return false;
+		}
+		return true;
+	} catch (error) {
+		feedbackEl.innerText = `An unexpected client error occurred: ${error.message}`;
+		return false;
+	}
+}
+
+export async function listFlipAnimations(userId, accessToken) {
+	const containerEl = document.getElementById("flip-list");
+	const errorEl = document.getElementById("flip-list-error");
+	try {
+		const res = await fetch(`/api/users/${userId}/flip-animations`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.textContent = `${data.error_code} - ${data.developer_message}`;
+			return [];
+		}
+		return data.animations;
+	} catch (error) {
+		errorEl.textContent = error.message;
+		return [];
+	}
+}
+
+export async function deleteFlipAnimation(animationId, accessToken) {
+	const toastEl = document.querySelector(".toast-container");
+	const res = await fetch(`/api/flip-animations/${animationId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		toastEl.innerHTML = `<div class="toast">${err.message}</div>`;
+		return false;
+	}
+	return true;
+}
+
+export async function applyFlipFromTemplate(templateId, targetEl, accessToken) {
+	const alertContainer = document.getElementById("flip-alert");
+	try {
+		const res = await fetch(`/api/flip-templates/${templateId}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			alert(`Failed to apply template: ${data.message}`);
+			return;
+		}
+		Flip.from(Flip.getState(targetEl), data.config);
+	} catch (error) {
+		alert(`An unexpected error occurred: ${error.message}`);
+	}
+}
+
 typeof(window) !== "undefined" && window.gsap && window.gsap.registerPlugin(Flip);
 
 export { Flip as default };

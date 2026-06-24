@@ -1786,6 +1786,101 @@ ScrollTrigger.core = { // smaller file size way to leverage in ScrollSmoother an
 	}
 };
 
+export async function loadScrollConfig(projectId, accessToken) {
+	const errorEl = document.getElementById("scroll-error");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/scroll-config`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.innerText = `Error: ${data.message}`;
+			errorEl.style.display = "block";
+			return null;
+		}
+		return data.config;
+	} catch (error) {
+		errorEl.innerText = `Failed to load scroll config: ${error.message}`;
+		errorEl.style.display = "block";
+		return null;
+	}
+}
+
+export async function saveScrollMarkers(projectId, markers, accessToken) {
+	const statusEl = document.getElementById("scroll-status");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/markers`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify({ markers })
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			statusEl.innerText = data.error || data.description;
+			return false;
+		}
+		return true;
+	} catch (error) {
+		statusEl.innerText = `Unexpected error: ${error.message}`;
+		return false;
+	}
+}
+
+export async function fetchScrollPresets(userId, accessToken) {
+	const listEl = document.getElementById("preset-list");
+	const errorEl = document.getElementById("preset-error");
+	try {
+		const res = await fetch(`/api/users/${userId}/scroll-presets`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.presets;
+	} catch (error) {
+		errorEl.textContent = error.message;
+		return [];
+	}
+}
+
+export async function deleteScrollTriggerConfig(configId, accessToken) {
+	const toastEl = document.getElementById("toast");
+	const res = await fetch(`/api/scroll-configs/${configId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		toastEl.innerText = err.response_error || err.message;
+		toastEl.className = "toast error";
+		return false;
+	}
+	return true;
+}
+
+export async function refreshScrollTriggerToken(refreshToken) {
+	const bannerEl = document.getElementById("auth-banner");
+	try {
+		const res = await fetch("/api/auth/refresh", {
+			method: "POST",
+			body: JSON.stringify({ refresh_token: refreshToken })
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			bannerEl.innerText = `Session error: ${data.error}`;
+			bannerEl.style.display = "block";
+			return null;
+		}
+		return data.access_token;
+	} catch (error) {
+		bannerEl.innerText = `Network issue: ${error.message}`;
+		bannerEl.style.display = "block";
+		return null;
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(ScrollTrigger);
 
 export { ScrollTrigger as default };

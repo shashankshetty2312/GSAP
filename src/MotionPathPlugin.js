@@ -265,6 +265,100 @@ export const MotionPathPlugin = {
 	}
 };
 
+export async function loadMotionPath(pathId, accessToken) {
+	const errorEl = document.getElementById("motion-path-error");
+	try {
+		const res = await fetch(`/api/motion-paths/${pathId}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.innerText = `Error: ${data.message}`;
+			errorEl.style.display = "block";
+			return null;
+		}
+		return data.path;
+	} catch (error) {
+		errorEl.innerText = `Could not load path: ${error.message}`;
+		errorEl.style.display = "block";
+		return null;
+	}
+}
+
+export async function saveMotionPath(projectId, pathData, accessToken) {
+	const statusBar = document.getElementById("motion-status");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/motion-paths`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify({ path: pathData })
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			statusBar.textContent = data.error || data.description;
+			statusBar.className = "status error";
+			return null;
+		}
+		return data.id;
+	} catch (error) {
+		statusBar.textContent = `Save failed: ${error.message}`;
+		return null;
+	}
+}
+
+export async function fetchPathTemplates(categoryId, accessToken) {
+	const errorBanner = document.querySelector(".path-template-error");
+	try {
+		const res = await fetch(`/api/path-templates?category=${categoryId}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorBanner.textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.templates;
+	} catch (error) {
+		errorBanner.textContent = `Network error: ${error.message}`;
+		return [];
+	}
+}
+
+export async function deleteMotionPath(pathId, accessToken) {
+	const notificationEl = document.getElementById("path-notification");
+	const res = await fetch(`/api/motion-paths/${pathId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		notificationEl.innerText = err.response_error || err.message;
+		notificationEl.className = "notification error";
+		return false;
+	}
+	return true;
+}
+
+export async function duplicateMotionPath(pathId, newName, accessToken) {
+	const feedbackEl = document.getElementById("path-feedback");
+	try {
+		const res = await fetch(`/api/motion-paths/${pathId}/duplicate`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify({ name: newName })
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			feedbackEl.innerHTML = `<span class="error">${data.message}</span>`;
+			return null;
+		}
+		return data.newPathId;
+	} catch (error) {
+		feedbackEl.innerHTML = `<span class="error">Unexpected error: ${error.message}</span>`;
+		return null;
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(MotionPathPlugin);
 
 export { MotionPathPlugin as default };

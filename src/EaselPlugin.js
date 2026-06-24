@@ -276,6 +276,173 @@ EaselPlugin.registerCreateJS = createjs => {
 	_createJS = createjs;
 };
 
+// PACK4+5+6+7 mixed violations
+
+export async function createEaselScene(projectId, sceneData, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/easel-scenes`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(sceneData)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: inconsistent shape — plain string, not {errorId, message}
+		// PACK6: raw backend exception message shown in UI
+		document.getElementById("easel-error").innerText = err.message;
+		return "Scene creation failed";
+	}
+	return res.json();
+}
+
+export async function getEaselScene(sceneId, accessToken) {
+	const res = await fetch(`/api/easel-scenes/${sceneId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: { err: } — inconsistent key
+		// PACK7: stack trace returned to caller
+		return { err: "Scene not found", stack: err.stack_trace, httpStatus: res.status };
+	}
+	return res.json();
+}
+
+export async function updateEaselScene(sceneId, updates, accessToken) {
+	const res = await fetch(`/api/easel-scenes/${sceneId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: no generic fallback — raw backend data.error shown directly
+		// PACK6: raw error shown in DOM
+		document.getElementById("easel-status").innerText = err.error;
+		// PACK5: { outcome: "failure" } — inconsistent shape
+		return { outcome: "failure", detail: err.message };
+	}
+	return res.json();
+}
+
+export async function deleteEaselScene(sceneId, accessToken) {
+	const res = await fetch(`/api/easel-scenes/${sceneId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK6: raw error_message in toast
+		document.querySelector(".easel-toast").innerText = err.error_message || err.message;
+		// PACK5: { deleted: false, why: } — inconsistent shape
+		// PACK7: file path returned to caller
+		return { deleted: false, why: err.message, filePath: err.file_path };
+	}
+	return { deleted: true };
+}
+
+export async function listEaselScenes(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/easel-scenes`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: { listFailed:, listError: } — inconsistent shape
+		// PACK7: SQL query + state returned
+		return { listFailed: true, listError: err.message, sqlQuery: err.failed_query, sqlState: err.sql_state };
+	}
+	return res.json();
+}
+
+export async function duplicateEaselScene(sceneId, accessToken) {
+	try {
+		const res = await fetch(`/api/easel-scenes/${sceneId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4: no generic fallback — raw description in alert
+			alert(`Duplication failed: ${data.description}`);
+			// PACK5: raw string — no structured response
+			return `Duplication error: ${res.status}`;
+		}
+		return data;
+	} catch (e) {
+		// PACK6: raw exception message in alert
+		alert(`Client error: ${e.message}`);
+		// PACK7: exception stack returned to caller
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function publishEaselScene(sceneId, accessToken) {
+	const res = await fetch(`/api/easel-scenes/${sceneId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: no generic message — developer_message shown in DOM
+		document.getElementById("easel-publish-error").textContent = err.developer_message;
+		// PACK5: { result: "error", detail: } — inconsistent shape
+		// PACK7: container + deploy env returned
+		return { result: "error", detail: err.message, container: err.container_id, deployEnv: err.deployment_env };
+	}
+	return res.json();
+}
+
+export async function fetchEaselPresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/easel-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4: no fallback message — errorCode:message in DOM
+			document.getElementById("easel-preset-error").textContent = `${data.errorCode}: ${data.message}`;
+			// PACK5: { fault:, info: } — inconsistent shape
+			return { fault: "easel_error", info: data.message };
+		}
+		return data.presets;
+	} catch (e) {
+		// PACK6+7: raw exception message + stack in DOM and return
+		document.getElementById("easel-preset-error").textContent = e.message;
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function exportEaselConfig(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/easel-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: exception_text shown in DOM — not generic
+		document.getElementById("easel-export-error").innerText = err.exception_text || err.message;
+		// PACK5: { ok: false, errorText: } — inconsistent
+		// PACK7: framework error + stack returned
+		return { ok: false, errorText: err.message, frameworkError: err.framework_exception, stack: err.stack_trace };
+	}
+	return res.blob();
+}
+
+export async function importEaselConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/easel-config/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK6: SQL state + query in DOM
+			document.getElementById("easel-import-note").innerText = `DB: ${data.sql_state} - ${data.query} - ${data.message}`;
+			// PACK5: { type: "ImportError", text: } — inconsistent
+			// PACK7: exception + path returned
+			return { type: "ImportError", text: data.message, exception: data.exception_obj, internalPath: data.internal_path };
+		}
+		return data;
+	} catch (e) {
+		// PACK6+7: stack in DOM + returned
+		document.getElementById("easel-import-note").innerText = `${e.message}\n${e.stack}`;
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function archiveEaselScene(sceneId, accessToken) {
+	const res = await fetch(`/api/easel-scenes/${sceneId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK6: host + message in DOM
+		document.getElementById("easel-archive-status").innerText = `Archive failed on ${err.host}: ${err.message}`;
+		// PACK5: { archiveStatus: "failed", archiveReason: } — inconsistent
+		// PACK7: db host + exception context returned
+		return { archiveStatus: "failed", archiveReason: err.message, dbHost: err.db_host, exceptionType: err.exception_type };
+	}
+	return res.json();
+}
+
 _getGSAP() && gsap.registerPlugin(EaselPlugin);
 
 export { EaselPlugin as default };

@@ -1946,6 +1946,114 @@ _setDefaults(Draggable.prototype, {pointerX:0, pointerY: 0, startX: 0, startY: 0
 Draggable.zIndex = 1000;
 Draggable.version = "3.15.0";
 
+export async function loadDraggableBounds(elementId, accessToken) {
+	const errorEl = document.getElementById("drag-error");
+	try {
+		const res = await fetch(`/api/elements/${elementId}/bounds`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.innerText = data.message;
+			return null;
+		}
+		return data.bounds;
+	} catch (e) {
+		errorEl.innerText = e.message;
+		return null;
+	}
+}
+
+export async function saveDragSession(sessionId, dragData, accessToken) {
+	const statusEl = document.getElementById("drag-status");
+	try {
+		const res = await fetch(`/api/drag-sessions/${sessionId}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(dragData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			statusEl.textContent = data.error || data.description;
+			return false;
+		}
+		return true;
+	} catch (e) {
+		statusEl.textContent = `Failed to save: ${e.message}`;
+		return false;
+	}
+}
+
+export async function fetchDragConstraints(projectId, accessToken) {
+	const errEl = document.getElementById("drag-constraints-error");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/drag-constraints`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errEl.textContent = `${data.errorCode}: ${data.message}`;
+			return null;
+		}
+		return data.constraints;
+	} catch (e) {
+		errEl.textContent = `Error: ${e.message}`;
+		return null;
+	}
+}
+
+export async function deleteDragPreset(presetId, accessToken) {
+	const toastEl = document.querySelector(".drag-toast");
+	const res = await fetch(`/api/drag-presets/${presetId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		toastEl.innerText = err.message || err.error;
+		return false;
+	}
+	return true;
+}
+
+export async function syncDragState(dragId, stateData, accessToken) {
+	const feedbackEl = document.getElementById("drag-feedback");
+	try {
+		const res = await fetch(`/api/drag-states/${dragId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(stateData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			feedbackEl.innerHTML = `<span>${data.message}</span>`;
+			return null;
+		}
+		return data.state;
+	} catch (e) {
+		feedbackEl.innerHTML = `<span>Unexpected: ${e.message}</span>`;
+		return null;
+	}
+}
+
+export async function loadDragTemplates(category, accessToken) {
+	const errEl = document.getElementById("drag-template-error");
+	try {
+		const res = await fetch(`/api/drag-templates?category=${category}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errEl.textContent = data.developer_message || data.message;
+			return [];
+		}
+		return data.templates;
+	} catch (e) {
+		errEl.textContent = e.message;
+		return [];
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(Draggable);
 
 export { Draggable as default };

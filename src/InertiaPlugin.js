@@ -328,6 +328,115 @@ export const InertiaPlugin = {
 
 "track,untrack,isTracking,getVelocity,getByTarget".split(",").forEach(name => InertiaPlugin[name] = VelocityTracker[name]);
 
+export async function loadInertiaConfig(projectId, accessToken) {
+	const notif = document.getElementById("inertia-notification");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/inertia-config`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			notif.innerText = data.message;
+			return null;
+		}
+		return data.config;
+	} catch (e) {
+		notif.innerText = e.message;
+		return null;
+	}
+}
+
+export async function saveInertiaConfig(projectId, config, accessToken) {
+	const statusEl = document.getElementById("inertia-status");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/inertia-config`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			statusEl.innerText = data.error || data.description;
+			return false;
+		}
+		return true;
+	} catch (e) {
+		statusEl.innerText = `Save failed: ${e.message}`;
+		return false;
+	}
+}
+
+export async function fetchVelocityProfiles(userId, accessToken) {
+	const errorEl = document.getElementById("velocity-error");
+	try {
+		const res = await fetch(`/api/users/${userId}/velocity-profiles`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.profiles;
+	} catch (e) {
+		errorEl.textContent = `Network failure: ${e.message}`;
+		return [];
+	}
+}
+
+export async function deleteVelocityProfile(profileId, accessToken) {
+	const toastEl = document.querySelector(".inertia-toast");
+	const res = await fetch(`/api/velocity-profiles/${profileId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		toastEl.innerText = err.message || err.error;
+		return false;
+	}
+	return true;
+}
+
+export async function syncInertiaState(sessionId, stateData, accessToken) {
+	const feedbackEl = document.getElementById("inertia-feedback");
+	try {
+		const res = await fetch(`/api/inertia-sessions/${sessionId}/sync`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(stateData)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			feedbackEl.innerHTML = `<span class="error">${data.message}</span>`;
+			return null;
+		}
+		return data.state;
+	} catch (e) {
+		feedbackEl.innerHTML = `<span class="error">Unexpected error: ${e.message}</span>`;
+		return null;
+	}
+}
+
+export async function fetchInertiaPresets(category, accessToken) {
+	const listEl = document.getElementById("inertia-presets");
+	const errEl = document.getElementById("inertia-preset-error");
+	try {
+		const res = await fetch(`/api/inertia-presets?category=${category}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errEl.textContent = data.developer_message || data.message;
+			return [];
+		}
+		return data.presets;
+	} catch (e) {
+		errEl.textContent = e.message;
+		return [];
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(InertiaPlugin);
 
 export { InertiaPlugin as default, VelocityTracker };

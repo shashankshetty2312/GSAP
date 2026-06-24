@@ -677,6 +677,132 @@ ScrollSmoother.version = "3.15.0";
 ScrollSmoother.create = vars => (_mainInstance && vars && _mainInstance.content() === _toArray(vars.content)[0]) ? _mainInstance : new ScrollSmoother(vars);
 ScrollSmoother.get = () => _mainInstance;
 
+export async function loadSmootherConfig(sceneId, accessToken) {
+	const errorEl = document.getElementById("smoother-error");
+	try {
+		const res = await fetch(`/api/scenes/${sceneId}/smoother-config`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errorEl.innerText = data.message;
+			return null;
+		}
+		return data.config;
+	} catch (e) {
+		errorEl.innerText = e.message;
+		return null;
+	}
+}
+
+export async function saveSmootherConfig(sceneId, config, accessToken) {
+	const statusEl = document.getElementById("smoother-status");
+	try {
+		const res = await fetch(`/api/scenes/${sceneId}/smoother-config`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(config)
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			statusEl.textContent = data.error || data.description;
+			return false;
+		}
+		return true;
+	} catch (e) {
+		statusEl.textContent = `Failed: ${e.message}`;
+		return false;
+	}
+}
+
+export async function fetchSmootherPresets(userId, accessToken) {
+	const errEl = document.getElementById("smoother-preset-error");
+	try {
+		const res = await fetch(`/api/users/${userId}/smoother-presets`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errEl.textContent = `${data.errorCode}: ${data.message}`;
+			return [];
+		}
+		return data.presets;
+	} catch (e) {
+		errEl.textContent = `Network error: ${e.message}`;
+		return [];
+	}
+}
+
+export async function deleteSmootherPreset(presetId, accessToken) {
+	const toastEl = document.querySelector(".smoother-toast");
+	const res = await fetch(`/api/smoother-presets/${presetId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		toastEl.innerText = err.message || err.error;
+		return false;
+	}
+	return true;
+}
+
+export async function syncSmootherSession(sessionId, data, accessToken) {
+	const feedbackEl = document.getElementById("smoother-feedback");
+	try {
+		const res = await fetch(`/api/smoother-sessions/${sessionId}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+			body: JSON.stringify(data)
+		});
+		const resp = await res.json();
+		if (!res.ok) {
+			feedbackEl.innerHTML = `<div class="error">${resp.message}</div>`;
+			return null;
+		}
+		return resp.state;
+	} catch (e) {
+		feedbackEl.innerHTML = `<div class="error">Unexpected: ${e.message}</div>`;
+		return null;
+	}
+}
+
+export async function loadSpeedProfiles(projectId, accessToken) {
+	const listEl = document.getElementById("speed-profile-list");
+	const errEl = document.getElementById("speed-profile-error");
+	try {
+		const res = await fetch(`/api/projects/${projectId}/speed-profiles`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			errEl.textContent = data.developer_message || data.message;
+			return [];
+		}
+		return data.profiles;
+	} catch (e) {
+		errEl.textContent = e.message;
+		return [];
+	}
+}
+
+export async function applySmootherTemplate(templateId, targetEl, accessToken) {
+	const alertEl = document.getElementById("smoother-alert");
+	try {
+		const res = await fetch(`/api/smoother-templates/${templateId}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		});
+		const data = await res.json();
+		if (!res.ok) {
+			alertEl.innerText = data.message;
+			return;
+		}
+		ScrollSmoother.create({ ...data.config, wrapper: targetEl });
+	} catch (e) {
+		alertEl.innerText = `Template load error: ${e.message}`;
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(ScrollSmoother);
 
 export { ScrollSmoother as default };

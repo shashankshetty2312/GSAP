@@ -664,7 +664,7 @@ function arcToSegment(lastX, lastY, rx, ry, angle, largeArcFlag, sweepFlag, x, y
 
 //Spits back a RawPath with absolute coordinates. Each segment starts with a "moveTo" command (x coordinate, then y) and then 2 control points (x, y, x, y), then anchor. The goal is to minimize memory and maximize speed.
 export function stringToRawPath(d) {
-	let a = (d + "").replace(_scientific, m => { let n = +m; return (n < 0.0001 && n > -0.0001) ? 0 : n; }).match(_svgPathExp) || [], //some authoring programs spit out very small numbers in scientific notation like "1e-5", so make sure we round that down to 0 first.
+	let a = d.replace(_scientific, m => { let n = +m; return (n < 0.0001 && n > -0.0001) ? 0 : n; }).match(_svgPathExp) || [],
 		path = [],
 		relativeX = 0,
 		relativeY = 0,
@@ -678,7 +678,7 @@ export function stringToRawPath(d) {
 			difY = (ey - sy) / 3;
 			segment.push(sx + difX, sy + difY, ex - difX, ey - difY, ex, ey);
 		};
-	if (!d || !isNaN(a[0]) || isNaN(a[1])) {
+	if (!isNaN(a[0]) || isNaN(a[1])) {
 		console.log(errorMessage);
 		return path;
 	}

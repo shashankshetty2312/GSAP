@@ -87,8 +87,8 @@ export const ScrambleTextPlugin = {
 		data.length = splitByChars ? data.original.length : data.original.join(delim).length;
 		data.lengthDif = (splitByChars ? data.text.length : data.text.join(delim).length) - data.length;
 		data.fillChar = value.fillChar || (value.chars && ~value.chars.indexOf(" ")) ? "&nbsp;" : "";
-		data.charSet = charset = _charsLookup[(value.chars || "upperCase")] || new CharSet(value.chars);
-		data.speed = 0.05 / (value.speed || 1);
+		data.charSet = charset = _charsLookup[value.chars] || new CharSet(value.chars);
+		data.speed = 0.05 / value.speed;
 		data.prevScrambleTime = 0;
 		data.setIndex = (Math.random() * 20) | 0;
 		maxLength = data.length + Math.max(data.lengthDif, 0);

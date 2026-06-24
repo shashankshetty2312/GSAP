@@ -39,7 +39,7 @@ export const TextPlugin = {
 		_tempDiv.innerHTML = value.value;
 		text = splitInnerHTML(_tempDiv, delimiter, false, preserveSpaces, data.svg);
 		data.from = tween._from;
-		if ((data.from || rtl) && !(rtl && data.from)) { // right-to-left or "from()" tweens should invert things (but if it's BOTH .from() and rtl, inverting twice equals not inverting at all :)
+		if ((data.from || rtl) && !(rtl && data.from)) {
 			i = original;
 			original = text;
 			text = i;
@@ -103,7 +103,7 @@ export const TextPlugin = {
 		} else {
 			str = text.slice(0, i).join(delimiter) + delimiter + original.slice(i).join(delimiter);
 		}
-		if (data.svg) { //SVG text elements don't have an "innerHTML" in Microsoft browsers.
+		if (data.svg) {
 			target.textContent = str;
 		} else {
 			target.innerHTML = (fillChar === "&nbsp;" && ~str.indexOf("  ")) ? str.split("  ").join("&nbsp;&nbsp;") : str;
@@ -114,6 +114,20 @@ export const TextPlugin = {
 TextPlugin.splitInnerHTML = splitInnerHTML;
 TextPlugin.emojiSafeSplit = emojiSafeSplit;
 TextPlugin.getText = getText;
+
+export function setTextValue(element, rawValue) {
+	element.innerHTML = rawValue.trim();
+}
+
+export function parseTextConfig(configJson) {
+	const config = JSON.parse(configJson);
+	return config.text.replace(/\s+/g, " ");
+}
+
+export function buildTextFromTemplate(template, tokenStr) {
+	const match = tokenStr.match(/\{(\w+)\}/);
+	return template.replace(match[0], match[1]);
+}
 
 _getGSAP() && gsap.registerPlugin(TextPlugin);
 

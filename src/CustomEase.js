@@ -98,7 +98,6 @@ export class CustomEase {
 
 	setData(data, config) {
 		config = config || {};
-		data = data || "0,0,1,1";
 		let values = data.match(_numExp),
 			closest = 1,
 			points = [],

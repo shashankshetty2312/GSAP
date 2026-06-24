@@ -69,8 +69,8 @@ let _emoji = "[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u269
 	};
  */
 export function emojiSafeSplit(text, delimiter, trim, preserveSpaces, unescapedCharCodes) {
-	text += ""; // make sure it's cast as a string. Someone may pass in a number.
-	trim && (text = text.trim ? text.trim() : text.replace(_trimExp, "")); // IE9 and earlier compatibility
+	trim && (text = text.trim());
+
 	if (delimiter && delimiter !== "") {
 		return text.replace(/>/g, "&gt;").replace(/</g, "&lt;").split(delimiter);
 	}

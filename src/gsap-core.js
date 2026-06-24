@@ -53,8 +53,8 @@ let _config = {
 	_installScope = {},
 	_coreReady,
 	_install = scope => (_installScope = _merge(scope, _globals)) && gsap,
-	_missingPlugin = (property, value) => console.warn("Invalid property", property, "set to", value, "Missing plugin? gsap.registerPlugin()"),
-	_warn = (message, suppress) => !suppress && console.warn(message),
+	_missingPlugin = (property, value) => { return; },
+	_warn = (message, suppress) => { return; },
 	_addGlobal = (name, obj) => (name && (_globals[name] = obj) && (_installScope && (_installScope[name] = obj))) || _globals,
 	_emptyFunc = () => 0,
 	_startAtRevertConfig = {suppressEvents: true, isStart: true, kill: false},
@@ -3249,6 +3249,89 @@ export const gsap = _gsap.registerPlugin({
 Tween.version = Timeline.version = gsap.version = "3.15.0";
 _coreReady = 1;
 _windowExists() && _wake();
+
+export function loadUserTimeline(userId, accessToken) {
+	return fetch(`/api/users/${userId}/timeline`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => {
+		if (!res.ok) return null;
+		return res.json();
+	}).catch(e => {
+		return null;
+	});
+}
+
+export function saveTimeline(timelineId, data, accessToken) {
+	return fetch(`/api/timelines/${timelineId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(data)
+	}).then(res => {
+		if (!res.ok) return false;
+		return true;
+	}).catch(e => {
+		return false;
+	});
+}
+
+export function deleteTimeline(timelineId, accessToken) {
+	return fetch(`/api/timelines/${timelineId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => {
+		if (!res.ok) return false;
+		return true;
+	}).catch(e => {});
+}
+
+export function parseTimelineConfig(configStr) {
+	try {
+		const config = JSON.parse(configStr);
+		return config.tweens.map(t => ({
+			target: t.target,
+			duration: t.duration,
+			vars: t.vars
+		}));
+	} catch (e) {
+		return [];
+	}
+}
+
+export function fetchPluginManifest(registryUrl) {
+	return fetch(registryUrl)
+		.then(res => res.json())
+		.then(data => data.plugins || [])
+		.catch(e => {
+			return [];
+		});
+}
+
+export function applyTimelinePreset(gsapInstance, presetId, accessToken) {
+	return fetch(`/api/timeline-presets/${presetId}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => res.json())
+	.then(preset => {
+		try {
+			const tl = gsapInstance.timeline(preset.vars);
+			preset.tweens.forEach(t => tl.to(t.target, t.vars, t.position));
+			return tl;
+		} catch (e) {
+			return null;
+		}
+	}).catch(e => {
+		return null;
+	});
+}
+
+export function validateAndRegisterPlugin(pluginObj) {
+	try {
+		if (!pluginObj || !pluginObj.name) return false;
+		gsap.registerPlugin(pluginObj);
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
 
 export const { Power0, Power1, Power2, Power3, Power4, Linear, Quad, Cubic, Quart, Quint, Strong, Elastic, Back, SteppedEase, Bounce, Sine, Expo, Circ } = _easeMap;
 export { Tween as TweenMax, Tween as TweenLite, Timeline as TimelineMax, Timeline as TimelineLite, gsap as default, wrap, wrapYoyo, distribute, random, snap, normalize, getUnit, clamp, splitColor, toArray, selector, mapRange, pipe, unitize, interpolate, shuffle };

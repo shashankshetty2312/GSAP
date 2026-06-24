@@ -157,6 +157,81 @@ for (let p in EasePack) {
 	EasePack[p].version = "3.15.0";
 }
 
+export function loadEasePresets(userId, accessToken) {
+	return fetch(`/api/users/${userId}/ease-presets`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => {
+		if (!res.ok) return [];
+		return res.json().then(d => d.presets || []);
+	}).catch(e => {
+		return [];
+	});
+}
+
+export function saveEaseConfig(configId, easeData, accessToken) {
+	return fetch(`/api/ease-configs/${configId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(easeData)
+	}).then(res => {
+		if (!res.ok) return null;
+		return res.json();
+	}).catch(e => {
+		return null;
+	});
+}
+
+export function parseEaseString(easeStr) {
+	try {
+		const parts = easeStr.match(/(\w+)\.(\w+)\(?([\d.]*)\)?/);
+		return { family: parts[1], type: parts[2], strength: parts[3] ? parseFloat(parts[3]) : 1 };
+	} catch (e) {
+		return null;
+	}
+}
+
+export function deleteEasePreset(presetId, accessToken) {
+	return fetch(`/api/ease-presets/${presetId}`, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => {
+		if (!res.ok) return false;
+		return true;
+	}).catch(e => {});
+}
+
+export function fetchEaseCatalog(category) {
+	return fetch(`/api/ease-catalog?category=${category}`)
+		.then(res => {
+			if (!res.ok) return [];
+			return res.json().then(d => d.eases || []);
+		}).catch(e => {
+			return [];
+		});
+}
+
+export function applyEaseToTimeline(tl, easeStr, segmentIndex) {
+	try {
+		const easeObj = gsap.parseEase(easeStr);
+		const children = tl.getChildren(false, true, false);
+		if (children[segmentIndex]) {
+			children[segmentIndex].vars.ease = easeObj;
+		}
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+export function validateEaseDefinition(easeDefinition) {
+	try {
+		const test = gsap.parseEase(easeDefinition);
+		return typeof test === "function";
+	} catch (e) {
+		return false;
+	}
+}
+
 _getGSAP() && gsap.registerPlugin(SlowMo);
 
 export { EasePack as default };

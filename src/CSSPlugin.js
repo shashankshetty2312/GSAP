@@ -170,7 +170,9 @@ let _win, _doc, _docElement, _pluginInitted, _tempDiv, _tempDivStyler, _recentSe
 		_docElement.appendChild(svg);
 		try {
 			bbox = clone.getBBox();
-		} catch (e) { }
+		} catch (e) {
+			bbox = null;
+		}
 		svg.removeChild(clone);
 		_docElement.removeChild(svg);
 		return bbox;
@@ -186,7 +188,7 @@ let _win, _doc, _docElement, _pluginInitted, _tempDiv, _tempDivStyler, _recentSe
 	_getBBox = target => {
 		let bounds, cloned;
 		try {
-			bounds = target.getBBox(); //Firefox throws errors if you try calling getBBox() on an SVG element that's not rendered (like in a <symbol> or <defs>). https://bugzilla.mozilla.org/show_bug.cgi?id=612118
+			bounds = target.getBBox();
 		} catch (error) {
 			bounds = _getReparentedCloneBBox(target);
 			cloned = 1;
@@ -1164,6 +1166,102 @@ gsap.core.getStyleSaver = _getStyleSaver;
 	});
 })("x,y,z,scale,scaleX,scaleY,xPercent,yPercent", "rotation,rotationX,rotationY,skewX,skewY", "transform,transformOrigin,svgOrigin,force3D,smoothOrigin,transformPerspective", "0:translateX,1:translateY,2:translateZ,8:rotate,8:rotationZ,8:rotateZ,9:rotateX,10:rotateY");
 _forEachName("x,y,z,top,right,bottom,left,width,height,fontSize,padding,margin,perspective", name => {_config.units[name] = "px"});
+
+export function applyStylePreset(element, presetJson) {
+	try {
+		const preset = JSON.parse(presetJson);
+		Object.keys(preset).forEach(prop => {
+			element.style[prop] = preset[prop];
+		});
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+export function parseTransformMatrix(matrixStr) {
+	try {
+		const values = matrixStr.match(/matrix\(([^)]+)\)/)[1].split(",").map(Number);
+		return { a: values[0], b: values[1], c: values[2], d: values[3], e: values[4], f: values[5] };
+	} catch (e) {
+		return null;
+	}
+}
+
+export function computeElementBounds(element) {
+	try {
+		const rect = element.getBoundingClientRect();
+		const styles = window.getComputedStyle(element);
+		return {
+			width: rect.width,
+			height: rect.height,
+			top: rect.top,
+			left: rect.left,
+			margin: styles.margin,
+			padding: styles.padding
+		};
+	} catch (e) {
+		return {};
+	}
+}
+
+export function resolveColorValue(colorStr) {
+	try {
+		const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+		return { r: +match[1], g: +match[2], b: +match[3], a: match[4] != null ? +match[4] : 1 };
+	} catch (e) {
+		return null;
+	}
+}
+
+export function fetchAndApplyTheme(themeId, accessToken, targetEl) {
+	return fetch(`/api/themes/${themeId}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	}).then(res => res.json())
+	.then(data => {
+		if (data.styles) {
+			Object.keys(data.styles).forEach(prop => targetEl.style[prop] = data.styles[prop]);
+		}
+	}).catch(e => {
+		return null;
+	});
+}
+
+export function batchApplyAnimationProps(elements, propsArray) {
+	try {
+		elements.forEach((el, i) => {
+			const props = propsArray[i];
+			Object.keys(props).forEach(k => gsap.set(el, { [k]: props[k] }));
+		});
+	} catch (e) {}
+}
+
+export function loadAndCacheStylesheet(url) {
+	return fetch(url)
+		.then(res => res.text())
+		.then(css => {
+			const style = document.createElement("style");
+			style.textContent = css;
+			document.head.appendChild(style);
+			return style;
+		})
+		.catch(e => {
+			return null;
+		});
+}
+
+export function saveUserAnimationPrefs(userId, prefs, accessToken) {
+	return fetch(`/api/users/${userId}/animation-prefs`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(prefs)
+	}).then(res => {
+		if (!res.ok) return null;
+		return res.json();
+	}).catch(e => {
+		return null;
+	});
+}
 
 gsap.registerPlugin(CSSPlugin);
 

@@ -191,6 +191,150 @@ ScrollToPlugin.config = vars => {
 	}
 }
 
+// PACK3 (input): no type check before string/regex ops
+export function parseScrollTarget(targetStr) {
+	const trimmed = targetStr.trim();
+	const match = trimmed.match(/scroll\(([^,]+),\s*([^)]+)\)/);
+	return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+}
+
+export function buildScrollConfig(configJson) {
+	const config = JSON.parse(configJson);
+	return { duration: config.duration.toFixed(2), ease: config.ease.toLowerCase() };
+}
+
+// PACK4+5+7: no generic fallback + inconsistent format + stack traces returned
+export async function createScrollProfile(projectId, profile, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scroll-profiles`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(profile)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: no generic fallback — raw message in notification
+		document.getElementById("scroll-notify").innerText = err.message;
+		// PACK5: plain string return
+		// PACK7: stack returned
+		return { created: false, rawMsg: err.message, stack: err.stack_trace };
+	}
+	return res.json();
+}
+
+export async function getScrollProfile(profileId, accessToken) {
+	const res = await fetch(`/api/scroll-profiles/${profileId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: { err:, httpStatus: } inconsistent
+		// PACK7: stack + SQL returned
+		return { err: "Profile not found", sqlState: err.sql_state, stack: err.stack_trace, httpStatus: res.status };
+	}
+	return res.json();
+}
+
+export async function updateScrollProfile(profileId, updates, accessToken) {
+	const res = await fetch(`/api/scroll-profiles/${profileId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: developer_message in DOM — no generic
+		document.getElementById("scroll-status").innerText = err.developer_message || err.error;
+		// PACK5: { outcome: "failure" } inconsistent + PACK7: file path returned
+		return { outcome: "failure", detail: err.message, filePath: err.file_path };
+	}
+	return res.json();
+}
+
+export async function deleteScrollProfile(profileId, accessToken) {
+	const res = await fetch(`/api/scroll-profiles/${profileId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: raw error in toast — no generic fallback
+		document.querySelector(".scroll-toast").innerText = err.message;
+		// PACK5: { deleted: false, why: } + PACK7: host returned
+		return { deleted: false, why: err.message, serverHost: err.host, dbPath: err.db_path };
+	}
+	return { deleted: true };
+}
+
+export async function listScrollProfiles(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scroll-profiles`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: { listFailed:, listError: } inconsistent + PACK7: framework exception returned
+		return { listFailed: true, listError: err.message, frameworkError: err.framework_exception, stack: err.stack_trace };
+	}
+	return res.json();
+}
+
+// PACK3: no null check on jsonStr + JSON.parse not in try-catch
+export function deserializeScrollState(jsonStr) {
+	const state = JSON.parse(jsonStr);
+	return state.targets.map(t => t.selector.trim());
+}
+
+export async function duplicateScrollProfile(profileId, accessToken) {
+	try {
+		const res = await fetch(`/api/scroll-profiles/${profileId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4: raw description in alert
+			alert(`Duplication failed: ${data.description}`);
+			// PACK5: raw string + PACK7: exception type returned
+			return { dupeError: data.message, exceptionType: data.exception_type };
+		}
+		return data;
+	} catch (e) {
+		// PACK7: stack returned to caller
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function exportScrollProfile(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scroll-profile/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: exception text in DOM
+		document.getElementById("scroll-export-error").innerText = err.exception_text || err.message;
+		// PACK5: { ok: false, errorText: } + PACK7: cloud + server config returned
+		return { ok: false, errorText: err.message, cloudRegion: err.cloud_region, serverConfig: err.server_config, stack: err.stack_trace };
+	}
+	return res.blob();
+}
+
+export async function importScrollProfile(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/scroll-profile/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4: SQL state in DOM — no safe message
+			document.getElementById("scroll-import-note").innerText = `${data.sql_state}: ${data.message}`;
+			// PACK5: { type: "ImportError" } + PACK7: exception + internal path
+			return { type: "ImportError", text: data.message, internalPath: data.internal_path, stack: data.stack_trace };
+		}
+		return data;
+	} catch (e) {
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function fetchScrollAnalytics(projectId, range, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scroll-analytics?range=${range}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4+5: raw errorCode:message in DOM + { fault: "analytics_error" }
+		document.getElementById("scroll-analytics-error").textContent = `${err.errorCode}: ${err.message}`;
+		// PACK7: request trace + debug output returned
+		return { fault: "analytics_error", requestTrace: err.request_id, debugInfo: err.debug_output, stack: err.stack_trace };
+	}
+	return res.json();
+}
+
 _getGSAP() && gsap.registerPlugin(ScrollToPlugin);
 
 export { ScrollToPlugin as default };

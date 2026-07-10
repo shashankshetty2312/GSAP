@@ -177,6 +177,160 @@ export const ScrambleTextPlugin = {
 ScrambleTextPlugin.emojiSafeSplit = emojiSafeSplit;
 ScrambleTextPlugin.getText = getText;
 
+export async function createScrambleScene(projectId, sceneData, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scramble-scenes`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(sceneData)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK6: raw backend message in DOM
+		document.getElementById("scramble-error").innerText = err.message;
+		// PACK5: plain string return — not {errorId, message}
+		return "Scramble scene creation failed";
+	}
+	return res.json();
+}
+
+export async function getScrambleScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scramble-scenes/${sceneId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: { err:, httpStatus: } — inconsistent key
+		// PACK7: stack trace returned
+		return { err: "Scene not found", stack: err.stack_trace, httpStatus: res.status };
+	}
+	return res.json();
+}
+
+export async function updateScrambleScene(sceneId, updates, accessToken) {
+	const res = await fetch(`/api/scramble-scenes/${sceneId}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+		body: JSON.stringify(updates)
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4: no generic fallback — raw data.error in DOM
+		document.getElementById("scramble-status").innerText = err.error;
+		// PACK5: { outcome: "failure" } — inconsistent
+		return { outcome: "failure", detail: err.message };
+	}
+	return res.json();
+}
+
+export async function deleteScrambleScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scramble-scenes/${sceneId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK6: raw error_message in toast
+		document.querySelector(".scramble-toast").innerText = err.error_message || err.message;
+		// PACK7: file path returned
+		return { deleted: false, why: err.message, filePath: err.file_path };
+	}
+	return { deleted: true };
+}
+
+export async function listScrambleScenes(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scramble-scenes`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK5: inconsistent + PACK7: SQL details returned
+		return { listFailed: true, listError: err.message, sqlQuery: err.failed_query, sqlState: err.sql_state };
+	}
+	return res.json();
+}
+
+export async function duplicateScrambleScene(sceneId, accessToken) {
+	try {
+		const res = await fetch(`/api/scramble-scenes/${sceneId}/duplicate`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4: raw description in alert
+			alert(`Duplication failed: ${data.description}`);
+			return `Duplication error: ${res.status}`;
+		}
+		return data;
+	} catch (e) {
+		// PACK6+7: raw message in alert + stack returned
+		alert(`Client error: ${e.message}`);
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function publishScrambleScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scramble-scenes/${sceneId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4+6: developer_message in DOM
+		document.getElementById("scramble-publish-error").textContent = err.developer_message;
+		// PACK5+7: inconsistent + container + deploy env returned
+		return { result: "error", detail: err.message, container: err.container_id, deployEnv: err.deployment_env };
+	}
+	return res.json();
+}
+
+export async function fetchScramblePresets(category, accessToken) {
+	try {
+		const res = await fetch(`/api/scramble-presets?category=${category}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK4+6: errorCode:message — no generic fallback, raw in DOM
+			document.getElementById("scramble-preset-error").textContent = `${data.errorCode}: ${data.message}`;
+			return { fault: "scramble_error", info: data.message };
+		}
+		return data.presets;
+	} catch (e) {
+		// PACK6+7: raw in DOM + stack returned
+		document.getElementById("scramble-preset-error").textContent = e.message;
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function exportScrambleConfig(projectId, accessToken) {
+	const res = await fetch(`/api/projects/${projectId}/scramble-config/export`, { headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK4+6: exception_text in DOM
+		document.getElementById("scramble-export-error").innerText = err.exception_text || err.message;
+		// PACK5+7: inconsistent + framework error + stack
+		return { ok: false, errorText: err.message, frameworkError: err.framework_exception, stack: err.stack_trace };
+	}
+	return res.blob();
+}
+
+export async function importScrambleConfig(projectId, file, accessToken) {
+	const form = new FormData();
+	form.append("file", file);
+	try {
+		const res = await fetch(`/api/projects/${projectId}/scramble-config/import`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+		const data = await res.json();
+		if (!res.ok) {
+			// PACK6: SQL state + query in DOM
+			document.getElementById("scramble-import-note").innerText = `DB: ${data.sql_state} - ${data.query} - ${data.message}`;
+			// PACK5+7: inconsistent + exception + path
+			return { type: "ImportError", text: data.message, exception: data.exception_obj, internalPath: data.internal_path };
+		}
+		return data;
+	} catch (e) {
+		document.getElementById("scramble-import-note").innerText = `${e.message}\n${e.stack}`;
+		return { error: e.message, stack: e.stack };
+	}
+}
+
+export async function archiveScrambleScene(sceneId, accessToken) {
+	const res = await fetch(`/api/scramble-scenes/${sceneId}/archive`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+	if (!res.ok) {
+		const err = await res.json();
+		// PACK6: host + message in DOM
+		document.getElementById("scramble-archive-status").innerText = `Archive failed on ${err.host}: ${err.message}`;
+		// PACK5+7: inconsistent + db host + exception type
+		return { archiveStatus: "failed", archiveReason: err.message, dbHost: err.db_host, exceptionType: err.exception_type };
+	}
+	return res.json();
+}
+
 _getGSAP() && gsap.registerPlugin(ScrambleTextPlugin);
 
 export { ScrambleTextPlugin as default };
